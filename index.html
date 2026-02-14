@@ -1,1183 +1,372 @@
 <!DOCTYPE html>
+
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>360° Depth Panorama</title>
+<title>360° Seamless Panorama</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-:root {
-  --bg: #06060c;
-  --surface: #0e0e18;
-  --surface2: #161625;
-  --cyan: #00f0ff;
-  --cyan-dim: rgba(0,240,255,0.15);
-  --magenta: #ff2d78;
-  --violet: #8b5cf6;
-  --lime: #a3e635;
-  --text: #e4e4ef;
-  --text2: #6c6c88;
-  --border: rgba(255,255,255,0.06);
-  --glass: rgba(14,14,24,0.88);
-  --r: 14px;
-}
-* { margin:0; padding:0; box-sizing:border-box; }
-body {
-  font-family:'Syne',sans-serif;
-  background:var(--bg);
-  color:var(--text);
-  overflow-x:hidden;
-  min-height:100vh;
-  -webkit-user-select:none;
-  user-select:none;
-}
+:root{--bg:#06060c;--sf:#0e0e18;--sf2:#161625;--cy:#00f0ff;--mg:#ff2d78;--vi:#8b5cf6;--lm:#a3e635;--tx:#e4e4ef;--tx2:#6c6c88;--bd:rgba(255,255,255,.06);--gl:rgba(14,14,24,.88);--r:14px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--tx);overflow-x:hidden;min-height:100vh;-webkit-user-select:none;user-select:none}
+.screen{display:none;width:100%;min-height:100vh;position:relative}
+.screen.active{display:flex;flex-direction:column}
+@keyframes sp{to{transform:rotate(360deg)}}
+@keyframes fi{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fu{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pop{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes pu{0%,100%{box-shadow:0 0 0 0 rgba(0,240,255,.3)}50%{box-shadow:0 0 0 12px transparent}}
+@keyframes pulseR{0%,100%{opacity:.6;transform:translateX(0)}50%{opacity:1;transform:translateX(6px)}}
+@keyframes pulseL{0%,100%{opacity:.6;transform:translateX(0)}50%{opacity:1;transform:translateX(-6px)}}
 
-/* SCREENS */
-.screen { display:none; width:100%; min-height:100vh; position:relative; }
-.screen.active { display:flex; flex-direction:column; }
+#home{align-items:center;justify-content:center;padding:40px 20px;text-align:center;background:radial-gradient(ellipse at 30% 20%,rgba(0,240,255,.06) 0%,transparent 50%),radial-gradient(ellipse at 70% 80%,rgba(139,92,246,.05) 0%,transparent 50%),var(–bg)}
+.logo{width:88px;height:88px;margin-bottom:28px;position:relative;animation:fi .8s ease}
+.logo svg{width:100%;height:100%}
+.lo1{position:absolute;inset:-16px;border:1px dashed rgba(0,240,255,.2);border-radius:50%;animation:sp 25s linear infinite}
+.lo2{position:absolute;inset:-8px;border:1px solid rgba(139,92,246,.15);border-radius:50%;animation:sp 18s linear infinite reverse}
+.tag{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:rgba(0,240,255,.1);border:1px solid rgba(0,240,255,.2);border-radius:100px;font-family:‘JetBrains Mono’,monospace;font-size:10px;color:var(–cy);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:20px}
+h1{font-size:32px;font-weight:800;line-height:1.15;margin-bottom:14px;background:linear-gradient(135deg,#fff 20%,var(–cy) 80%);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.sub{font-size:14px;color:var(–tx2);line-height:1.7;max-width:340px;margin-bottom:32px}
+.mode-select{width:100%;max-width:380px;margin-bottom:28px;animation:fu 1s ease .2s both}
+.mode-label{font-family:‘JetBrains Mono’,monospace;font-size:10px;color:var(–tx2);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px}
+.mode-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.mode-card{background:var(–sf);border:2px solid var(–bd);border-radius:var(–r);padding:20px 14px;text-align:center;cursor:pointer;transition:.3s}
+.mode-card.active{border-color:var(–cy);background:rgba(0,240,255,.05)}
+.mode-card:active{transform:scale(.97)}
+.mode-icon{margin:0 auto 12px;border:2px solid rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;transition:.3s;border-radius:8px}
+.mode-card.active .mode-icon{border-color:var(–cy)}
+.mode-icon.landscape{width:64px;height:40px}
+.mode-icon.portrait{width:40px;height:64px}
+.mode-icon svg{width:20px;height:20px;opacity:.4;stroke:currentColor;fill:none;stroke-width:1.5}
+.mode-card.active .mode-icon svg{opacity:1;stroke:var(–cy)}
+.mode-name{font-size:14px;font-weight:700;margin-bottom:4px}
+.mode-desc{font-size:11px;color:var(–tx2);line-height:1.3}
+.mode-card.active .mode-name{color:var(–cy)}
+.feats{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;max-width:380px;margin-bottom:28px;animation:fu 1s ease .3s both}
+.ft{background:var(–sf);border:1px solid var(–bd);border-radius:var(–r);padding:14px 12px;text-align:left}
+.ft-t{font-size:12px;font-weight:700;margin-bottom:3px}
+.ft-d{font-size:10px;color:var(–tx2);line-height:1.4}
+.btn-go{display:inline-flex;align-items:center;gap:10px;padding:16px 40px;background:linear-gradient(135deg,var(–cy),#00bcd4);color:var(–bg);font-family:‘Syne’,sans-serif;font-size:16px;font-weight:700;border:none;border-radius:100px;cursor:pointer;box-shadow:0 4px 28px rgba(0,240,255,.25);transition:transform .2s;animation:fu 1.2s ease .4s both}
+.btn-go:active{transform:scale(.96)}
 
-/* ========== HOME ========== */
-#homeScreen {
-  align-items:center; justify-content:center;
-  padding:40px 20px; text-align:center;
-  background:
-    radial-gradient(ellipse at 30% 20%, rgba(0,240,255,0.06) 0%, transparent 50%),
-    radial-gradient(ellipse at 70% 80%, rgba(139,92,246,0.05) 0%, transparent 50%),
-    var(--bg);
-}
-.logo-mark {
-  width:88px; height:88px; margin-bottom:28px; position:relative;
-  animation: fadeIn .8s ease;
-}
-.logo-mark svg { width:100%; height:100%; }
-.logo-orbit {
-  position:absolute; inset:-16px;
-  border:1px dashed rgba(0,240,255,0.2); border-radius:50%;
-  animation: spin 25s linear infinite;
-}
-.logo-orbit2 {
-  position:absolute; inset:-8px;
-  border:1px solid rgba(139,92,246,0.15); border-radius:50%;
-  animation: spin 18s linear infinite reverse;
-}
-@keyframes spin { to { transform:rotate(360deg); } }
-@keyframes fadeIn { from{opacity:0;transform:translateY(-16px)} to{opacity:1;transform:translateY(0)} }
-@keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+#capture{height:100vh;overflow:hidden;background:#000}
+.cw{position:relative;width:100%;height:100%}
+#vid{width:100%;height:100%;object-fit:cover}
+#cvs{display:none}
+.fl{position:absolute;inset:0;background:#fff;opacity:0;z-index:30;pointer-events:none;transition:opacity .05s}
+.fl.on{opacity:.5;transition:none}
+.ht{position:absolute;top:0;left:0;right:0;z-index:20;padding:48px 16px 12px;background:linear-gradient(to bottom,rgba(0,0,0,.75),transparent)}
+.hr{display:flex;justify-content:space-between;align-items:center}
+.hs{font-family:‘JetBrains Mono’,monospace;font-size:11px;color:rgba(255,255,255,.6)}
+.hs b{color:var(–cy);font-size:13px}
+.bx{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.12);border:none;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px)}
+.mode-badge{position:absolute;top:88px;left:16px;z-index:20;display:flex;align-items:center;gap:6px;padding:5px 10px;background:rgba(0,0,0,.6);border:1px solid rgba(0,240,255,.3);border-radius:100px;font-family:‘JetBrains Mono’,monospace;font-size:10px;color:var(–cy);backdrop-filter:blur(8px)}
+.mode-badge .dot{width:6px;height:6px;border-radius:50%;background:var(–cy)}
+.ths{position:absolute;top:88px;right:0;z-index:15;display:flex;gap:5px;padding:0 12px;overflow-x:auto;scrollbar-width:none;max-width:55%}
+.ths::-webkit-scrollbar{display:none}
+.ti{width:40px;height:40px;border-radius:7px;overflow:hidden;flex-shrink:0;border:2px solid rgba(255,255,255,.25);animation:pop .25s ease}
+.ti img{width:100%;height:100%;object-fit:cover}
+.ti.cur{border-color:var(–cy);box-shadow:0 0 8px rgba(0,240,255,.3)}
 
-.tag {
-  display:inline-flex; align-items:center; gap:5px;
-  padding:5px 12px; background:var(--cyan-dim);
-  border:1px solid rgba(0,240,255,0.2); border-radius:100px;
-  font-family:'JetBrains Mono',monospace; font-size:10px;
-  color:var(--cyan); letter-spacing:1.5px; text-transform:uppercase;
-  margin-bottom:20px; animation: fadeIn .6s ease;
-}
-h1 {
-  font-size:34px; font-weight:800; line-height:1.15;
-  margin-bottom:14px; animation: fadeIn 1s ease;
-  background:linear-gradient(135deg,#fff 20%,var(--cyan) 80%);
-  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
-}
-.hero-sub {
-  font-size:14px; color:var(--text2); line-height:1.7;
-  max-width:340px; margin-bottom:36px; animation: fadeIn 1.2s ease;
-}
+.dir-guide{position:absolute;inset:0;z-index:11;pointer-events:none;display:none}
+.dir-guide.on{display:block}
+.dir-arrow-wrap{position:absolute;top:50%;z-index:12;transform:translateY(-50%);display:flex;align-items:center;gap:8px}
+.dir-arrow-wrap.right{right:24px;flex-direction:row}
+.dir-arrow-wrap.left{left:24px;flex-direction:row-reverse}
+.dir-arrow{width:48px;height:48px;border-radius:50%;background:rgba(0,240,255,.15);border:2px solid var(–cy);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px)}
+.dir-arrow svg{width:24px;height:24px;fill:none;stroke:var(–cy);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.dir-arrow-wrap.right .dir-arrow{animation:pulseR 1.2s ease infinite}
+.dir-arrow-wrap.left .dir-arrow{animation:pulseL 1.2s ease infinite}
+.dir-label{font-family:‘JetBrains Mono’,monospace;font-size:11px;color:var(–cy);text-shadow:0 1px 4px rgba(0,0,0,.8);white-space:nowrap}
 
-/* Feature cards */
-.features {
-  display:grid; grid-template-columns:1fr 1fr;
-  gap:10px; width:100%; max-width:380px;
-  margin-bottom:36px; animation: fadeUp 1s ease .2s both;
-}
-.feat {
-  background:var(--surface); border:1px solid var(--border);
-  border-radius:var(--r); padding:18px 14px; text-align:left;
-}
-.feat-icon {
-  width:32px; height:32px; border-radius:8px;
-  display:flex; align-items:center; justify-content:center;
-  margin-bottom:10px; font-size:16px;
-}
-.feat-icon.c1 { background:rgba(0,240,255,0.12); }
-.feat-icon.c2 { background:rgba(139,92,246,0.12); }
-.feat-icon.c3 { background:rgba(255,45,120,0.12); }
-.feat-icon.c4 { background:rgba(163,230,53,0.12); }
-.feat-title { font-size:13px; font-weight:700; margin-bottom:4px; }
-.feat-desc { font-size:11px; color:var(--text2); line-height:1.4; }
+.overlap-strip{position:absolute;z-index:10;display:none;top:0;height:100%}
+.overlap-strip.on{display:block}
+.overlap-strip.right{right:0;width:28%;border-left:2px solid rgba(0,240,255,.3)}
+.overlap-strip.left{left:0;width:28%;border-right:2px solid rgba(0,240,255,.3)}
+.overlap-strip .ov-img{width:100%;height:100%;object-fit:cover;opacity:.2;filter:grayscale(.4)}
+.overlap-strip .ov-lbl{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:‘JetBrains Mono’,monospace;font-size:9px;color:var(–cy);background:rgba(0,0,0,.6);padding:3px 8px;border-radius:100px}
 
-.btn-start {
-  display:inline-flex; align-items:center; gap:10px;
-  padding:16px 40px; background:linear-gradient(135deg,var(--cyan),#00bcd4);
-  color:var(--bg); font-family:'Syne',sans-serif;
-  font-size:16px; font-weight:700; border:none; border-radius:100px;
-  cursor:pointer; box-shadow:0 4px 28px rgba(0,240,255,0.25);
-  animation: fadeUp 1.2s ease .4s both;
-  transition: transform .2s, box-shadow .2s;
-}
-.btn-start:active { transform:scale(.96); }
+.move-meter{position:absolute;bottom:172px;left:16px;right:16px;z-index:12}
+.mm-label{display:flex;justify-content:space-between;font-family:‘JetBrains Mono’,monospace;font-size:9px;color:var(–tx2);margin-bottom:4px}
+.mm-track{width:100%;height:6px;background:rgba(255,255,255,.08);border-radius:3px;position:relative;overflow:visible}
+.mm-fill{height:100%;border-radius:3px;transition:width .15s;background:var(–cy);position:absolute;top:0;left:0}
+.mm-fill.perfect{background:var(–lm)}
+.mm-fill.over{background:var(–mg)}
+.mm-zone{position:absolute;top:-1px;bottom:-1px;border-radius:3px;border:1px dashed rgba(163,230,53,.5);background:rgba(163,230,53,.06)}
+.mm-cursor{position:absolute;top:-4px;width:3px;height:14px;background:#fff;border-radius:2px;transition:left .15s;box-shadow:0 0 6px rgba(255,255,255,.5)}
 
-/* ========== CAPTURE ========== */
-#captureScreen { height:100vh; overflow:hidden; background:#000; }
-.cam-wrap { position:relative; width:100%; height:100%; }
-#camVideo { width:100%; height:100%; object-fit:cover; }
-#capCanvas { display:none; }
+.move-st{position:absolute;bottom:148px;left:50%;transform:translateX(-50%);z-index:12;font-family:‘JetBrains Mono’,monospace;font-size:11px;padding:4px 12px;border-radius:100px;backdrop-filter:blur(8px);white-space:nowrap;transition:.2s}
+.move-st.wait{color:var(–cy);background:rgba(0,240,255,.1);border:1px solid rgba(0,240,255,.2)}
+.move-st.good{color:var(–lm);background:rgba(163,230,53,.1);border:1px solid rgba(163,230,53,.2)}
+.move-st.far{color:var(–mg);background:rgba(255,45,120,.1);border:1px solid rgba(255,45,120,.2)}
 
-.flash { position:absolute; inset:0; background:#fff; opacity:0; z-index:30; pointer-events:none; transition:opacity .05s; }
-.flash.on { opacity:.5; transition:none; }
+.ab{position:absolute;bottom:216px;left:50%;transform:translateX(-50%);z-index:12;text-align:center}
+.an{font-family:‘JetBrains Mono’,monospace;font-size:32px;font-weight:700;color:#fff;text-shadow:0 0 24px rgba(0,240,255,.3)}
+.al{font-size:9px;color:var(–tx2);text-transform:uppercase;letter-spacing:2px;margin-top:2px}
+.pw{position:absolute;bottom:194px;left:16px;right:16px;z-index:12}
+.pt{width:100%;height:3px;background:rgba(255,255,255,.08);border-radius:2px}
+.pf{height:100%;border-radius:2px;width:0%;background:linear-gradient(90deg,var(–cy),var(–vi));transition:width .3s}
+.pl{display:flex;justify-content:space-between;margin-top:4px;font-family:‘JetBrains Mono’,monospace;font-size:9px;color:var(–tx2)}
+.cb{position:absolute;bottom:0;left:0;right:0;z-index:20;padding:16px 20px 36px;background:linear-gradient(to top,rgba(0,0,0,.8),transparent);display:flex;align-items:center;justify-content:center;gap:28px}
+.bm{padding:8px 16px;border-radius:100px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#fff;font-family:‘Syne’,sans-serif;font-size:12px;font-weight:600;cursor:pointer;backdrop-filter:blur(8px);transition:.2s}
+.bm.on{background:rgba(0,240,255,.15);border-color:var(–cy);color:var(–cy)}
+.bs{width:68px;height:68px;border-radius:50%;background:transparent;border:3px solid #fff;cursor:pointer;position:relative;transition:.2s}
+.bs::after{content:’’;position:absolute;inset:4px;border-radius:50%;background:#fff;transition:.15s}
+.bs:active::after{inset:6px;background:var(–cy)}
+.bs.ao{border-color:var(–cy);animation:pu 1.4s ease infinite}
+.bs.ao::after{background:var(–cy)}
+.bf{padding:8px 16px;border-radius:100px;background:linear-gradient(135deg,var(–mg),#ff6b9d);border:none;color:#fff;font-family:‘Syne’,sans-serif;font-size:12px;font-weight:600;cursor:pointer}
 
-/* HUD Top */
-.hud-top {
-  position:absolute; top:0; left:0; right:0; z-index:20;
-  padding:48px 16px 16px;
-  background:linear-gradient(to bottom,rgba(0,0,0,.7),transparent);
-}
-.hud-row { display:flex; justify-content:space-between; align-items:center; }
-.hud-stat {
-  font-family:'JetBrains Mono',monospace; font-size:11px; color:rgba(255,255,255,.6);
-}
-.hud-stat b { color:var(--cyan); font-size:13px; }
-.btn-x {
-  width:34px; height:34px; border-radius:50%;
-  background:rgba(255,255,255,.12); border:none; color:#fff;
-  font-size:16px; cursor:pointer; display:flex;
-  align-items:center; justify-content:center; backdrop-filter:blur(8px);
-}
+#process{align-items:center;justify-content:center;height:100vh;padding:40px 20px;text-align:center;background:var(–bg)}
+.pv{width:140px;height:140px;position:relative;margin-bottom:28px}
+.pr{position:absolute;inset:0;border:2px solid transparent;border-radius:50%;animation:sp 1.2s linear infinite}
+.pr:nth-child(1){border-top-color:var(–cy)}
+.pr:nth-child(2){inset:14px;border-top-color:var(–vi);animation-duration:1.8s;animation-direction:reverse}
+.pr:nth-child(3){inset:28px;border-top-color:var(–mg);animation-duration:2.4s}
+.pp{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:‘JetBrains Mono’,monospace;font-size:22px;font-weight:700;color:var(–cy)}
+.pt2{font-size:18px;font-weight:700;margin-bottom:6px}
+.ps2{font-size:12px;color:var(–tx2)}
+.stitch-preview{margin-top:24px;width:100%;max-width:360px;height:70px;border-radius:10px;overflow:hidden;border:1px solid var(–bd);position:relative}
+.stitch-preview canvas{width:100%;height:100%;object-fit:cover}
+.stitch-line{position:absolute;top:0;bottom:0;width:2px;background:var(–cy);box-shadow:0 0 10px var(–cy);left:0%;transition:left .3s}
 
-/* Thumbnails */
-.thumbs {
-  position:absolute; top:96px; left:0; right:0; z-index:15;
-  display:flex; gap:5px; padding:0 12px;
-  overflow-x:auto; scrollbar-width:none;
-}
-.thumbs::-webkit-scrollbar{display:none}
-.th {
-  width:40px; height:40px; border-radius:7px; overflow:hidden;
-  flex-shrink:0; border:2px solid rgba(255,255,255,.25);
-  animation: pop .25s ease;
-}
-.th img { width:100%; height:100%; object-fit:cover; }
-@keyframes pop { from{transform:scale(0);opacity:0} to{transform:scale(1);opacity:1} }
-
-/* Angle + Progress */
-.angle-box {
-  position:absolute; bottom:168px; left:50%; transform:translateX(-50%); z-index:15;
-  text-align:center;
-}
-.angle-num {
-  font-family:'JetBrains Mono',monospace; font-size:36px; font-weight:700;
-  color:#fff; text-shadow:0 0 24px rgba(0,240,255,.3);
-}
-.angle-lbl { font-size:10px; color:var(--text2); text-transform:uppercase; letter-spacing:2px; margin-top:2px; }
-
-.prog-wrap {
-  position:absolute; bottom:136px; left:16px; right:16px; z-index:15;
-}
-.prog-track { width:100%; height:3px; background:rgba(255,255,255,.08); border-radius:2px; }
-.prog-fill {
-  height:100%; border-radius:2px; width:0%;
-  background:linear-gradient(90deg,var(--cyan),var(--violet));
-  transition:width .3s ease;
-}
-.prog-labels {
-  display:flex; justify-content:space-between; margin-top:4px;
-  font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--text2);
-}
-
-/* Distance indicator overlay */
-.depth-indicator {
-  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); z-index:14;
-  pointer-events:none; text-align:center;
-}
-.depth-rings {
-  width:180px; height:180px; position:relative;
-}
-.d-ring {
-  position:absolute; border-radius:50%; border:1px solid rgba(0,240,255,.15);
-  display:flex; align-items:flex-start; justify-content:center; padding-top:4px;
-}
-.d-ring span {
-  font-family:'JetBrains Mono',monospace; font-size:8px; color:rgba(0,240,255,.4);
-  background:rgba(0,0,0,.6); padding:1px 4px; border-radius:3px;
-}
-.d-ring.r1 { inset:0; border-color:rgba(163,230,53,.2); }
-.d-ring.r2 { inset:20px; border-color:rgba(0,240,255,.2); }
-.d-ring.r3 { inset:45px; border-color:rgba(139,92,246,.2); }
-.d-ring.r4 { inset:65px; }
-.crosshair {
-  position:absolute; top:50%; left:50%; width:20px; height:20px;
-  margin:-10px 0 0 -10px;
-}
-.crosshair::before,.crosshair::after {
-  content:''; position:absolute; background:var(--cyan);
-}
-.crosshair::before { width:1px; height:100%; left:50%; }
-.crosshair::after { height:1px; width:100%; top:50%; }
-
-/* Bottom controls */
-.cam-btns {
-  position:absolute; bottom:0; left:0; right:0; z-index:20;
-  padding:16px 20px 36px;
-  background:linear-gradient(to top,rgba(0,0,0,.75),transparent);
-  display:flex; align-items:center; justify-content:center; gap:28px;
-  pointer-events:auto;
-}
-.btn-mode {
-  padding:8px 16px; border-radius:100px;
-  background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15);
-  color:#fff; font-family:'Syne',sans-serif; font-size:12px; font-weight:600;
-  cursor:pointer; backdrop-filter:blur(8px); transition:.2s;
-}
-.btn-mode.on { background:rgba(0,240,255,.15); border-color:var(--cyan); color:var(--cyan); }
-.btn-shutter {
-  width:68px; height:68px; border-radius:50%; background:transparent;
-  border:3px solid #fff; cursor:pointer; position:relative; transition:.2s;
-}
-.btn-shutter::after {
-  content:''; position:absolute; inset:4px; border-radius:50%;
-  background:#fff; transition:.15s;
-}
-.btn-shutter:active::after { inset:6px; background:var(--cyan); }
-.btn-shutter.auto-on { border-color:var(--cyan); animation: pulse 1.4s ease infinite; }
-.btn-shutter.auto-on::after { background:var(--cyan); }
-@keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(0,240,255,.3)} 50%{box-shadow:0 0 0 12px transparent} }
-
-.btn-finish {
-  padding:8px 16px; border-radius:100px;
-  background:linear-gradient(135deg,var(--magenta),#ff6b9d);
-  border:none; color:#fff; font-family:'Syne',sans-serif;
-  font-size:12px; font-weight:600; cursor:pointer;
-}
-
-/* ========== PROCESSING ========== */
-#processScreen {
-  align-items:center; justify-content:center; height:100vh;
-  padding:40px 20px; text-align:center; background:var(--bg);
-}
-.proc-visual { width:160px; height:160px; position:relative; margin-bottom:28px; }
-.proc-ring {
-  position:absolute; inset:0; border:2px solid transparent;
-  border-radius:50%; animation: spin 1.2s linear infinite;
-}
-.proc-ring:nth-child(1) { border-top-color:var(--cyan); }
-.proc-ring:nth-child(2) { inset:14px; border-top-color:var(--violet); animation-duration:1.8s; animation-direction:reverse; }
-.proc-ring:nth-child(3) { inset:28px; border-top-color:var(--magenta); animation-duration:2.4s; }
-.proc-ring:nth-child(4) { inset:42px; border-top-color:var(--lime); animation-duration:3s; animation-direction:reverse; }
-
-.proc-pct {
-  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-  font-family:'JetBrains Mono',monospace; font-size:24px; font-weight:700; color:var(--cyan);
-}
-.proc-title { font-size:20px; font-weight:700; margin-bottom:6px; }
-.proc-step { font-size:13px; color:var(--text2); }
-
-/* Depth analysis card during processing */
-.depth-analysis {
-  margin-top:28px; background:var(--surface); border:1px solid var(--border);
-  border-radius:var(--r); padding:18px; width:100%; max-width:340px; text-align:left;
-}
-.da-title {
-  font-family:'JetBrains Mono',monospace; font-size:10px;
-  color:var(--cyan); text-transform:uppercase; letter-spacing:1.5px;
-  margin-bottom:12px;
-}
-.da-row {
-  display:flex; justify-content:space-between; align-items:center;
-  padding:6px 0; border-bottom:1px solid var(--border);
-}
-.da-row:last-child { border:none; }
-.da-label { font-size:12px; color:var(--text2); }
-.da-val { font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:700; }
-.da-val.good { color:var(--lime); }
-.da-val.ok { color:var(--cyan); }
-.da-val.warn { color:#fbbf24; }
-
-/* ========== 3D VIEWER ========== */
-#viewerScreen { height:100vh; background:#000; }
-#viewer3D { width:100%; height:100%; }
-
-.v-hud {
-  position:absolute; top:0; left:0; right:0; z-index:10;
-  padding:48px 16px 14px;
-  background:linear-gradient(to bottom,rgba(0,0,0,.6),transparent);
-  display:flex; justify-content:space-between; align-items:flex-start;
-}
-.v-title { font-size:15px; font-weight:700; }
-.v-sub { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text2); margin-top:3px; }
-
-.v-bottom {
-  position:absolute; bottom:0; left:0; right:0; z-index:10;
-  padding:16px 16px 36px;
-  background:linear-gradient(to top,rgba(0,0,0,.8),transparent);
-}
-
-/* Depth layer toggles */
-.layer-toggles {
-  display:flex; gap:8px; margin-bottom:14px; overflow-x:auto;
-  scrollbar-width:none; padding-bottom:4px;
-}
-.layer-toggles::-webkit-scrollbar{display:none}
-.layer-btn {
-  flex-shrink:0; padding:6px 14px; border-radius:100px;
-  font-family:'JetBrains Mono',monospace; font-size:10px;
-  border:1px solid var(--border); background:var(--glass);
-  color:var(--text2); cursor:pointer; backdrop-filter:blur(8px);
-  transition:.2s; white-space:nowrap;
-}
-.layer-btn.on { border-color:var(--cyan); color:var(--cyan); background:rgba(0,240,255,.08); }
-.layer-btn .dot {
-  display:inline-block; width:6px; height:6px; border-radius:50%;
-  margin-right:5px; vertical-align:middle;
-}
-
-/* Angle bar */
-.v-angle-bar { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
-.v-track { flex:1; height:3px; background:rgba(255,255,255,.1); border-radius:2px; position:relative; }
-.v-thumb {
-  position:absolute; top:-5px; width:11px; height:11px;
-  background:var(--cyan); border-radius:50%;
-  box-shadow:0 0 10px rgba(0,240,255,.4); transition:left .05s;
-}
-.v-angle-val {
-  font-family:'JetBrains Mono',monospace; font-size:11px;
-  color:var(--cyan); min-width:36px; text-align:right;
-}
-
-/* Depth info card */
-.depth-info {
-  background:var(--glass); border:1px solid var(--border);
-  border-radius:10px; padding:10px 14px; margin-bottom:12px;
-  backdrop-filter:blur(8px);
-  display:flex; justify-content:space-around;
-}
-.di-item { text-align:center; }
-.di-val {
-  font-family:'JetBrains Mono',monospace; font-size:16px; font-weight:700;
-}
-.di-val.c { color:var(--cyan); }
-.di-val.m { color:var(--magenta); }
-.di-val.l { color:var(--lime); }
-.di-label { font-size:9px; color:var(--text2); margin-top:2px; text-transform:uppercase; letter-spacing:1px; }
-
-.v-btns { display:flex; gap:10px; }
-.v-btn {
-  flex:1; padding:12px; border-radius:10px;
-  border:1px solid var(--border); background:var(--glass);
-  color:var(--text); font-family:'Syne',sans-serif;
-  font-size:13px; font-weight:600; cursor:pointer;
-  backdrop-filter:blur(8px); text-align:center; transition:.2s;
-}
-.v-btn:active { transform:scale(.97); }
-.v-btn.pri { background:linear-gradient(135deg,var(--cyan),#00bcd4); color:var(--bg); border:none; }
-
-/* Depth map toggle overlay */
-.depth-map-overlay {
-  position:absolute; top:96px; right:12px; z-index:15;
-  width:120px; height:90px; border-radius:10px;
-  border:1px solid var(--border); overflow:hidden;
-  background:#000; display:none;
-}
-.depth-map-overlay.show { display:block; }
-.depth-map-overlay canvas { width:100%; height:100%; }
-.dm-label {
-  position:absolute; bottom:0; left:0; right:0;
-  background:rgba(0,0,0,.7); padding:3px 6px;
-  font-family:'JetBrains Mono',monospace; font-size:8px;
-  color:var(--cyan); text-align:center;
-}
-
-/* Toast */
-.toast {
-  position:fixed; top:56px; left:50%; z-index:200;
-  transform:translateX(-50%) translateY(-80px);
-  padding:10px 18px; background:var(--glass);
-  border:1px solid var(--border); border-radius:100px;
-  font-size:12px; backdrop-filter:blur(8px);
-  transition:transform .3s ease; white-space:nowrap;
-}
-.toast.on { transform:translateX(-50%) translateY(0); }
-
-/* Guide */
-.guide-bg {
-  position:fixed; inset:0; background:rgba(0,0,0,.85);
-  z-index:100; display:none; align-items:center;
-  justify-content:center; padding:20px; backdrop-filter:blur(6px);
-}
-.guide-bg.on { display:flex; }
-.guide-card {
-  background:var(--surface); border:1px solid var(--border);
-  border-radius:20px; padding:28px 20px; max-width:340px; text-align:center;
-}
-.guide-card h2 { font-size:18px; font-weight:700; margin-bottom:10px; }
-.guide-card p { font-size:13px; color:var(--text2); line-height:1.6; margin-bottom:20px; }
-.guide-card .guide-grid {
-  display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:20px;
-}
-.guide-card .gg {
-  background:var(--surface2); border-radius:10px; padding:12px 8px;
-}
-.gg-icon { font-size:20px; margin-bottom:6px; }
-.gg-text { font-size:11px; color:var(--text2); line-height:1.3; }
-.btn-guide {
-  padding:12px 28px; border-radius:100px;
-  background:linear-gradient(135deg,var(--cyan),#00bcd4);
-  color:var(--bg); border:none; font-family:'Syne',sans-serif;
-  font-size:14px; font-weight:700; cursor:pointer; width:100%;
-}
-
-/* Desktop */
-@media(min-width:768px) {
-  .desk-note {
-    position:fixed; inset:0; background:var(--bg); z-index:1000;
-    display:flex; align-items:center; justify-content:center; text-align:center; padding:40px;
-  }
-  .desk-note.off { display:none; }
-  .desk-note h2 { font-size:22px; margin-bottom:10px; }
-  .desk-note p { color:var(--text2); margin-bottom:20px; line-height:1.6; }
-  .desk-note button {
-    padding:10px 20px; border-radius:100px;
-    background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15);
-    color:#fff; font-family:'Syne',sans-serif; cursor:pointer;
-  }
-}
+#viewer{height:100vh;background:#000}
+#v3d{width:100%;height:100%}
+.vh{position:absolute;top:0;left:0;right:0;z-index:10;padding:48px 16px 14px;background:linear-gradient(to bottom,rgba(0,0,0,.6),transparent);display:flex;justify-content:space-between;align-items:flex-start}
+.vt{font-size:15px;font-weight:700}
+.vs{font-family:‘JetBrains Mono’,monospace;font-size:10px;color:var(–tx2);margin-top:3px}
+.vb{position:absolute;bottom:0;left:0;right:0;z-index:10;padding:16px 16px 36px;background:linear-gradient(to top,rgba(0,0,0,.8),transparent)}
+.va{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.vk{flex:1;height:3px;background:rgba(255,255,255,.1);border-radius:2px;position:relative}
+.vm{position:absolute;top:-5px;width:11px;height:11px;background:var(–cy);border-radius:50%;box-shadow:0 0 10px rgba(0,240,255,.4);transition:left .05s}
+.vv{font-family:‘JetBrains Mono’,monospace;font-size:11px;color:var(–cy);min-width:36px;text-align:right}
+.vn{display:flex;gap:10px}
+.vc{flex:1;padding:12px;border-radius:10px;border:1px solid var(–bd);background:var(–gl);color:var(–tx);font-family:‘Syne’,sans-serif;font-size:13px;font-weight:600;cursor:pointer;backdrop-filter:blur(8px);text-align:center;transition:.2s}
+.vc:active{transform:scale(.97)}
+.vc.p{background:linear-gradient(135deg,var(–cy),#00bcd4);color:var(–bg);border:none}
+.fov-d{position:absolute;top:100px;left:50%;transform:translateX(-50%);z-index:10;font-family:‘JetBrains Mono’,monospace;font-size:10px;color:var(–tx2);background:var(–gl);padding:4px 10px;border-radius:100px;border:1px solid var(–bd);backdrop-filter:blur(8px);opacity:0;transition:opacity .3s}
+.fov-d.on{opacity:1}
+.toast{position:fixed;top:56px;left:50%;z-index:200;transform:translateX(-50%) translateY(-80px);padding:10px 18px;background:var(–gl);border:1px solid var(–bd);border-radius:100px;font-size:12px;backdrop-filter:blur(8px);transition:transform .3s;white-space:nowrap}
+.toast.on{transform:translateX(-50%) translateY(0)}
+.guide-bg{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:100;display:none;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(6px)}
+.guide-bg.on{display:flex}
+.gc{background:var(–sf);border:1px solid var(–bd);border-radius:20px;padding:28px 20px;max-width:340px;text-align:center}
+.gc h2{font-size:18px;font-weight:700;margin-bottom:10px}
+.gc p{font-size:13px;color:var(–tx2);line-height:1.6;margin-bottom:16px}
+.gg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+.gi{background:var(–sf2);border-radius:10px;padding:12px 8px}
+.gi-i{font-size:20px;margin-bottom:6px}
+.gi-t{font-size:11px;color:var(–tx2);line-height:1.3}
+.hi-tip{font-size:11px;color:var(–lm);background:rgba(163,230,53,.08);border:1px solid rgba(163,230,53,.15);border-radius:8px;padding:8px 12px;margin-bottom:16px;line-height:1.5}
+.bg{padding:12px 28px;border-radius:100px;background:linear-gradient(135deg,var(–cy),#00bcd4);color:var(–bg);border:none;font-family:‘Syne’,sans-serif;font-size:14px;font-weight:700;cursor:pointer;width:100%}
+@media(min-width:768px){.dn{position:fixed;inset:0;background:var(–bg);z-index:1000;display:flex;align-items:center;justify-content:center;text-align:center;padding:40px}.dn.off{display:none}.dn h2{font-size:22px;margin-bottom:10px}.dn p{color:var(–tx2);margin-bottom:20px}.dn button{padding:10px 20px;border-radius:100px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#fff;font-family:‘Syne’,sans-serif;cursor:pointer}}
 </style>
+
 </head>
 <body>
-
-<div class="desk-note" id="deskNote">
-  <div>
-    <h2>📱 모바일 최적화 앱</h2>
-    <p>카메라와 자이로스코프 기반 앱입니다.<br>스마트폰에서 사용하세요.</p>
-    <button onclick="document.getElementById('deskNote').classList.add('off')">데스크톱 미리보기</button>
-  </div>
-</div>
-
+<div class="dn" id="dn"><div><h2>📱 모바일 최적화</h2><p>카메라+자이로 기반 앱입니다.<br>스마트폰 Safari/Chrome 권장</p><button onclick="this.parentElement.parentElement.classList.add('off')">데스크톱 미리보기</button></div></div>
 <div class="toast" id="toast"></div>
+<div class="guide-bg" id="guide"><div class="gc"><h2>📸 촬영 가이드</h2><div class="hi-tip">💡 화살표 방향으로 천천히 이동하세요.<br>초록색 바에 도달하면 촬영 적정 위치!</div><div class="gg"><div class="gi"><div class="gi-i">🔄</div><div class="gi-t">천천히<br>균일하게 회전</div></div><div class="gi"><div class="gi-i">📐</div><div class="gi-t">30% 오버랩<br>가이드 표시</div></div><div class="gi"><div class="gi-i">➡️</div><div class="gi-t">방향 화살표<br>이동량 표시</div></div><div class="gi"><div class="gi-i">🎯</div><div class="gi-t">초록 = 촬영<br>적정 위치</div></div></div><button class="bg" onclick="document.getElementById('guide').classList.remove('on')">촬영 시작</button></div></div>
 
-<div class="guide-bg" id="guide">
-  <div class="guide-card">
-    <h2>🎯 촬영 + 깊이 분석 가이드</h2>
-    <p>한 자리에서 천천히 360° 회전하며 촬영합니다.<br>AI가 각 사진의 깊이를 분석하여<br>3D 파노라마를 생성합니다.</p>
-    <div class="guide-grid">
-      <div class="gg"><div class="gg-icon">📐</div><div class="gg-text">5~50m<br>최적 거리</div></div>
-      <div class="gg"><div class="gg-icon">🔄</div><div class="gg-text">천천히<br>균일하게 회전</div></div>
-      <div class="gg"><div class="gg-icon">🤖</div><div class="gg-text">자동 모드:<br>30° 간격 촬영</div></div>
-      <div class="gg"><div class="gg-icon">🏔️</div><div class="gg-text">3D 깊이<br>레이어 분리</div></div>
-    </div>
-    <button class="btn-guide" onclick="document.getElementById('guide').classList.remove('on')">촬영 시작</button>
-  </div>
+<div class="screen active" id="home">
+<div class="tag">SEAMLESS 360° PANORAMA</div>
+<div class="logo"><div class="lo1"></div><div class="lo2"></div><svg viewBox="0 0 88 88" fill="none"><defs><linearGradient id="g1" x1="0" y1="0" x2="88" y2="88"><stop offset="0%" stop-color="#00f0ff"/><stop offset="50%" stop-color="#8b5cf6"/><stop offset="100%" stop-color="#ff2d78"/></linearGradient></defs><circle cx="44" cy="44" r="36" stroke="url(#g1)" stroke-width="1.5" fill="none"/><circle cx="44" cy="44" r="24" stroke="url(#g1)" stroke-width="1" fill="none" opacity=".4"/><circle cx="44" cy="44" r="3" fill="#00f0ff"/><path d="M16 44 Q44 28 72 44 Q44 60 16 44Z" stroke="url(#g1)" stroke-width="1" fill="rgba(0,240,255,.05)"/></svg></div>
+<h1>Seamless 360°<br>Panorama</h1>
+<p class="sub">이음새 없는 매끄러운 360° 파노라마를<br>누구나 쉽게 촬영할 수 있습니다</p>
+<div class="mode-select"><div class="mode-label">촬영 모드 선택</div><div class="mode-cards">
+<div class="mode-card active" data-mode="landscape" onclick="selMode(this)"><div class="mode-icon landscape"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg></div><div class="mode-name">가로 모드</div><div class="mode-desc">넓은 풍경 촬영<br>16:9 비율</div></div>
+<div class="mode-card" data-mode="portrait" onclick="selMode(this)"><div class="mode-icon portrait"><svg viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="2"/><circle cx="12" cy="12" r="3"/></svg></div><div class="mode-name">세로 모드</div><div class="mode-desc">높은 건물/실내<br>9:16 비율</div></div>
+</div></div>
+<div class="feats"><div class="ft"><div class="ft-t">🔗 이음새 제거</div><div class="ft-d">알파 블렌딩 합성</div></div><div class="ft"><div class="ft-t">➡️ 방향 가이드</div><div class="ft-d">이동 방향/거리 표시</div></div><div class="ft"><div class="ft-t">🌐 3D 구면 뷰어</div><div class="ft-d">Three.js 렌더링</div></div><div class="ft"><div class="ft-t">📏 자동 겹침</div><div class="ft-d">30% 오버랩 유지</div></div></div>
+<button class="btn-go" onclick="startCapture()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> 촬영 시작하기</button>
 </div>
 
-<!-- HOME -->
-<div class="screen active" id="homeScreen">
-  <div class="tag">
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20"/></svg>
-    DEPTH PANORAMA v2.0
-  </div>
-  <div class="logo-mark">
-    <div class="logo-orbit"></div>
-    <div class="logo-orbit2"></div>
-    <svg viewBox="0 0 88 88" fill="none">
-      <defs>
-        <linearGradient id="g1" x1="0" y1="0" x2="88" y2="88">
-          <stop offset="0%" stop-color="#00f0ff"/>
-          <stop offset="50%" stop-color="#8b5cf6"/>
-          <stop offset="100%" stop-color="#ff2d78"/>
-        </linearGradient>
-      </defs>
-      <circle cx="44" cy="44" r="36" stroke="url(#g1)" stroke-width="1.5" fill="none"/>
-      <circle cx="44" cy="44" r="24" stroke="url(#g1)" stroke-width="1.5" fill="none" opacity=".5"/>
-      <circle cx="44" cy="44" r="12" stroke="url(#g1)" stroke-width="1.5" fill="none" opacity=".3"/>
-      <!-- Depth layers icon -->
-      <ellipse cx="44" cy="38" rx="18" ry="6" stroke="rgba(163,230,53,.5)" stroke-width="1" fill="none"/>
-      <ellipse cx="44" cy="44" rx="22" ry="8" stroke="rgba(0,240,255,.5)" stroke-width="1" fill="none"/>
-      <ellipse cx="44" cy="50" rx="26" ry="10" stroke="rgba(139,92,246,.5)" stroke-width="1" fill="none"/>
-      <circle cx="44" cy="44" r="3" fill="#00f0ff"/>
-    </svg>
-  </div>
-  <h1>360° Depth<br>Panorama</h1>
-  <p class="hero-sub">AI 깊이 추정으로 사진을 3D 레이어로 분리하고<br>몰입감 있는 360° 파노라마를 생성합니다</p>
-
-  <div class="features">
-    <div class="feat">
-      <div class="feat-icon c1">📷</div>
-      <div class="feat-title">스마트 캡처</div>
-      <div class="feat-desc">자이로스코프 기반 자동/수동 촬영</div>
-    </div>
-    <div class="feat">
-      <div class="feat-icon c2">🧠</div>
-      <div class="feat-title">AI 깊이 분석</div>
-      <div class="feat-desc">MiDaS 기반 깊이 맵 추출</div>
-    </div>
-    <div class="feat">
-      <div class="feat-icon c3">🌐</div>
-      <div class="feat-title">3D 뷰어</div>
-      <div class="feat-desc">Three.js 구체 매핑 렌더링</div>
-    </div>
-    <div class="feat">
-      <div class="feat-icon c4">📏</div>
-      <div class="feat-title">거리 최적화</div>
-      <div class="feat-desc">5~50m 골든존 가이드</div>
-    </div>
-  </div>
-
-  <button class="btn-start" onclick="beginCapture()">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-    촬영 시작하기
-  </button>
+<div class="screen" id="capture"><div class="cw">
+<video id="vid" autoplay playsinline muted></video><canvas id="cvs"></canvas><div class="fl" id="fl"></div>
+<div class="ht"><div class="hr"><div class="hs">촬영 <b id="cnt">0</b>/12장</div><div class="hs" id="aDisp">0°/360°</div><button class="bx" onclick="cancel()">✕</button></div></div>
+<div class="mode-badge" id="mBadge"><span class="dot"></span><span id="mBadgeTxt">가로 16:9</span></div>
+<div class="ths" id="ths"></div>
+<div class="dir-guide" id="dirG">
+  <div class="dir-arrow-wrap right" id="dirArr"><div class="dir-label" id="dirLbl">30° 이동</div><div class="dir-arrow"><svg viewBox="0 0 24 24" id="dirSvg"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div></div>
+  <div class="overlap-strip" id="ovStrip"><img class="ov-img" id="ovImg"><div class="ov-lbl">겹침 영역</div></div>
 </div>
-
-<!-- CAPTURE -->
-<div class="screen" id="captureScreen">
-  <div class="cam-wrap">
-    <video id="camVideo" autoplay playsinline muted></video>
-    <canvas id="capCanvas"></canvas>
-    <div class="flash" id="flash"></div>
-
-    <div class="hud-top">
-      <div class="hud-row">
-        <div class="hud-stat">촬영 <b id="pCount">0</b> / 12장</div>
-        <div class="hud-stat">깊이분석 <b id="depthStatus">대기</b></div>
-        <button class="btn-x" onclick="cancelCapture()">✕</button>
-      </div>
-    </div>
-
-    <div class="thumbs" id="thumbs"></div>
-
-    <div class="depth-indicator" id="depthIndicator">
-      <div class="depth-rings">
-        <div class="d-ring r1"><span>50m+</span></div>
-        <div class="d-ring r2"><span>20m</span></div>
-        <div class="d-ring r3"><span>5m</span></div>
-        <div class="d-ring r4"><span>2m</span></div>
-        <div class="crosshair"></div>
-      </div>
-    </div>
-
-    <div class="angle-box">
-      <div class="angle-num" id="angleNum">0°</div>
-      <div class="angle-lbl">current heading</div>
-    </div>
-
-    <div class="prog-wrap">
-      <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
-      <div class="prog-labels"><span>0°</span><span>360°</span></div>
-    </div>
-
-    <div class="cam-btns">
-      <button class="btn-mode" id="btnAutoMode" onclick="toggleAuto()">자동</button>
-      <button class="btn-shutter" id="btnShutter" onclick="takePhoto()"></button>
-      <button class="btn-finish" onclick="finishCapture()">완료</button>
-    </div>
-  </div>
+<div class="move-meter" id="moveMeter" style="display:none">
+  <div class="mm-label"><span>◀ 이전</span><span id="moveDeg">0°</span><span>다음 ▶</span></div>
+  <div class="mm-track"><div class="mm-zone" id="mmZone"></div><div class="mm-fill" id="mmFill"></div><div class="mm-cursor" id="mmCur" style="left:0%"></div></div>
 </div>
+<div class="move-st wait" id="moveSt" style="display:none">📷 첫 번째 사진을 촬영하세요</div>
+<div class="ab"><div class="an" id="an">0°</div><div class="al">heading</div></div>
+<div class="pw"><div class="pt"><div class="pf" id="pf"></div></div><div class="pl"><span>0°</span><span>360°</span></div></div>
+<div class="cb"><button class="bm" id="ba" onclick="togAuto()">자동</button><button class="bs" id="bsh" onclick="snap()"></button><button class="bf" onclick="finish()">완료</button></div>
+</div></div>
 
-<!-- PROCESSING -->
-<div class="screen" id="processScreen">
-  <div class="proc-visual">
-    <div class="proc-ring"></div>
-    <div class="proc-ring"></div>
-    <div class="proc-ring"></div>
-    <div class="proc-ring"></div>
-    <div class="proc-pct" id="procPct">0%</div>
-  </div>
-  <div class="proc-title" id="procTitle">깊이 분석 중...</div>
-  <div class="proc-step" id="procStep">이미지 전처리</div>
+<div class="screen" id="process"><div class="pv"><div class="pr"></div><div class="pr"></div><div class="pr"></div><div class="pp" id="pp">0%</div></div><div class="pt2" id="pt2">합성 중...</div><div class="ps2" id="ps2">전처리</div><div class="stitch-preview"><canvas id="sCvs"></canvas><div class="stitch-line" id="sLine"></div></div></div>
 
-  <div class="depth-analysis" id="depthAnalysis" style="opacity:0;transition:opacity .5s">
-    <div class="da-title">📊 Depth Analysis Report</div>
-    <div class="da-row"><span class="da-label">감지 레이어</span><span class="da-val ok" id="daLayers">—</span></div>
-    <div class="da-row"><span class="da-label">최적 거리 범위</span><span class="da-val good" id="daRange">—</span></div>
-    <div class="da-row"><span class="da-label">3D 효과 품질</span><span class="da-val" id="daQuality">—</span></div>
-    <div class="da-row"><span class="da-label">추정 최대 거리</span><span class="da-val ok" id="daMaxDist">—</span></div>
-    <div class="da-row"><span class="da-label">합성 해상도</span><span class="da-val" id="daRes">—</span></div>
-  </div>
-</div>
-
-<!-- 3D VIEWER -->
-<div class="screen" id="viewerScreen">
-  <div id="viewer3D"></div>
-
-  <div class="depth-map-overlay" id="depthMapOvl">
-    <canvas id="depthMapCanvas"></canvas>
-    <div class="dm-label">DEPTH MAP</div>
-  </div>
-
-  <div class="v-hud">
-    <div>
-      <div class="v-title">360° 3D Panorama</div>
-      <div class="v-sub" id="vMeta">12 photos · 4 depth layers</div>
-    </div>
-    <button class="btn-x" onclick="goHome()">✕</button>
-  </div>
-
-  <div class="v-bottom">
-    <div class="depth-info">
-      <div class="di-item"><div class="di-val c" id="diNear">2m</div><div class="di-label">근거리</div></div>
-      <div class="di-item"><div class="di-val m" id="diMid">15m</div><div class="di-label">중거리</div></div>
-      <div class="di-item"><div class="di-val l" id="diFar">50m+</div><div class="di-label">원거리</div></div>
-    </div>
-
-    <div class="layer-toggles" id="layerToggles">
-      <button class="layer-btn on" data-layer="all" onclick="toggleLayer(this)"><span class="dot" style="background:var(--text)"></span>전체</button>
-      <button class="layer-btn" data-layer="near" onclick="toggleLayer(this)"><span class="dot" style="background:var(--magenta)"></span>근경 0-5m</button>
-      <button class="layer-btn" data-layer="mid" onclick="toggleLayer(this)"><span class="dot" style="background:var(--cyan)"></span>중경 5-20m</button>
-      <button class="layer-btn" data-layer="far" onclick="toggleLayer(this)"><span class="dot" style="background:var(--lime)"></span>원경 20m+</button>
-      <button class="layer-btn" data-layer="depth" onclick="toggleLayer(this)"><span class="dot" style="background:var(--violet)"></span>깊이맵</button>
-    </div>
-
-    <div class="v-angle-bar">
-      <div class="v-track"><div class="v-thumb" id="vThumb"></div></div>
-      <div class="v-angle-val" id="vAngle">0°</div>
-    </div>
-
-    <div class="v-btns">
-      <button class="v-btn" id="btnAutoRot" onclick="toggleAutoRot()">↻ 자동회전</button>
-      <button class="v-btn" onclick="toggleDepthMap()">🗺 깊이맵</button>
-      <button class="v-btn pri" onclick="goHome()">새로 촬영</button>
-    </div>
-  </div>
-</div>
+<div class="screen" id="viewer"><div id="v3d"></div><div class="fov-d" id="fovD">FOV 75°</div><div class="vh"><div><div class="vt">360° Panorama</div><div class="vs" id="vmeta"></div></div><button class="bx" onclick="goHome()">✕</button></div><div class="vb"><div class="va"><div class="vk"><div class="vm" id="vthumb"></div></div><div class="vv" id="vang">0°</div></div><div class="vn"><button class="vc" id="arBtn" onclick="togAR()">↻ 자동회전</button><button class="vc" onclick="saveImg()">💾 저장</button><button class="vc p" onclick="goHome()">새로 촬영</button></div></div></div>
 
 <script>
-// ======================== STATE ========================
-const S = {
-  photos: [], angles: [], depthMaps: [],
-  angle: 0, startAngle: null, autoMode: false, lastAutoAngle: 0,
-  stream: null, isDesktop: false, simAngle: 0,
-  // Three.js
-  scene: null, camera: null, renderer: null,
-  spheres: { all: null, near: null, mid: null, far: null, depth: null },
-  isAutoRot: false, rotSpeed: .001,
-  isDrag: false, prevMouse: { x:0, y:0 },
-  lon: 0, lat: 0, phi: 0, theta: 0,
-};
+const S={photos:[],angles:[],mode:'landscape',angle:0,startAngle:null,auto:false,lastAA:0,stream:null,isDT:false,simA:0,step:30,scene:null,cam:null,ren:null,sphere:null,ar:false,drag:false,prev:{x:0,y:0},lon:0,lat:0,panoCvs:null};
+function showS(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active')}
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2500)}
+function selMode(el){document.querySelectorAll('.mode-card').forEach(c=>c.classList.remove('active'));el.classList.add('active');S.mode=el.dataset.mode}
 
-function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-}
-function toast(m) {
-  const t=document.getElementById('toast'); t.textContent=m;
-  t.classList.add('on'); setTimeout(()=>t.classList.remove('on'),2500);
+async function startCapture(){
+  S.photos=[];S.angles=[];S.startAngle=null;S.auto=false;S.lastAA=0;S.angle=0;
+  document.getElementById('cnt').textContent='0';document.getElementById('ths').innerHTML='';
+  document.getElementById('pf').style.width='0%';document.getElementById('ba').classList.remove('on');
+  document.getElementById('bsh').classList.remove('ao');document.getElementById('dirG').classList.remove('on');
+  document.getElementById('moveMeter').style.display='none';
+  const isL=S.mode==='landscape';
+  document.getElementById('mBadgeTxt').textContent=isL?'가로 16:9':'세로 9:16';
+  const ms=document.getElementById('moveSt');ms.style.display='block';ms.className='move-st wait';ms.textContent='📷 첫 번째 사진을 촬영하세요';
+  try{
+    S.stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:isL?1920:1080},height:{ideal:isL?1080:1920}},audio:false});
+    document.getElementById('vid').srcObject=S.stream;showS('capture');initOrient();document.getElementById('guide').classList.add('on');
+  }catch(e){S.isDT=true;showS('capture');document.getElementById('guide').classList.add('on');initMouse()}
 }
 
-// ======================== CAPTURE ========================
-async function beginCapture() {
-  S.photos=[]; S.angles=[]; S.depthMaps=[]; S.startAngle=null;
-  S.autoMode=false; S.lastAutoAngle=0; S.angle=0;
-  document.getElementById('pCount').textContent='0';
-  document.getElementById('thumbs').innerHTML='';
-  document.getElementById('progFill').style.width='0%';
-  document.getElementById('btnAutoMode').classList.remove('on');
-  document.getElementById('btnShutter').classList.remove('auto-on');
-  document.getElementById('depthStatus').textContent='대기';
-
-  try {
-    S.stream = await navigator.mediaDevices.getUserMedia({
-      video:{facingMode:'environment',width:{ideal:1920},height:{ideal:1080}}, audio:false
-    });
-    document.getElementById('camVideo').srcObject = S.stream;
-    showScreen('captureScreen');
-    initOrientation();
-    document.getElementById('guide').classList.add('on');
-  } catch(e) {
-    console.warn('Camera failed, demo mode',e);
-    S.isDesktop=true;
-    showScreen('captureScreen');
-    document.getElementById('guide').classList.add('on');
-    initMouseFallback();
-  }
+function initOrient(){
+  if(typeof DeviceOrientationEvent!=='undefined'&&typeof DeviceOrientationEvent.requestPermission==='function')
+    DeviceOrientationEvent.requestPermission().then(r=>{if(r==='granted')window.addEventListener('deviceorientation',onO);else initMouse()}).catch(()=>initMouse());
+  else if('DeviceOrientationEvent' in window){window.addEventListener('deviceorientation',onO);setTimeout(()=>{if(S.startAngle===null)initMouse()},1000)}
+  else initMouse();
 }
-
-function initOrientation() {
-  if(typeof DeviceOrientationEvent!=='undefined' && typeof DeviceOrientationEvent.requestPermission==='function') {
-    DeviceOrientationEvent.requestPermission().then(r=>{
-      if(r==='granted') window.addEventListener('deviceorientation',onOrient);
-      else initMouseFallback();
-    }).catch(()=>initMouseFallback());
-  } else if('DeviceOrientationEvent' in window) {
-    window.addEventListener('deviceorientation',onOrient);
-    setTimeout(()=>{ if(S.startAngle===null) initMouseFallback(); },1000);
-  } else initMouseFallback();
-}
-
-function onOrient(e) {
-  if(e.alpha===null) return;
-  if(S.startAngle===null) S.startAngle=e.alpha;
-  const rel=(e.alpha-S.startAngle+360)%360;
-  S.angle=rel; updateAngle(rel);
-  if(S.autoMode) checkAuto(rel);
-}
-
-function initMouseFallback() {
-  S.isDesktop=true; S.startAngle=0;
-  const el=document.getElementById('captureScreen');
-  let down=false, lx=0;
-  const move=dx=>{ S.simAngle=(S.simAngle+dx*.5+360)%360; S.angle=S.simAngle; updateAngle(S.simAngle); if(S.autoMode) checkAuto(S.simAngle); };
-  el.addEventListener('mousedown',e=>{ if(e.target.closest('.cam-btns,.hud-top')) return; down=true; lx=e.clientX; });
-  el.addEventListener('mousemove',e=>{ if(!down) return; move(e.clientX-lx); lx=e.clientX; });
-  el.addEventListener('mouseup',()=>down=false);
-  el.addEventListener('mouseleave',()=>down=false);
+function onO(e){if(e.alpha===null)return;if(S.startAngle===null)S.startAngle=e.alpha;const r=(e.alpha-S.startAngle+360)%360;S.angle=r;updA(r);if(S.photos.length>0)updDir(r);if(S.auto)chkA(r)}
+function initMouse(){
+  S.isDT=true;S.startAngle=0;const el=document.getElementById('capture');let dn=false,lx=0;
+  const mv=dx=>{S.simA=(S.simA+dx*.5+360)%360;S.angle=S.simA;updA(S.simA);if(S.photos.length>0)updDir(S.simA);if(S.auto)chkA(S.simA)};
+  el.addEventListener('mousedown',e=>{if(e.target.closest('.cb,.ht'))return;dn=true;lx=e.clientX});
+  el.addEventListener('mousemove',e=>{if(!dn)return;mv(e.clientX-lx);lx=e.clientX});
+  el.addEventListener('mouseup',()=>dn=false);el.addEventListener('mouseleave',()=>dn=false);
   let tx=0;
-  el.addEventListener('touchstart',e=>{ if(e.target.closest('.cam-btns,.hud-top')) return; tx=e.touches[0].clientX; },{passive:true});
-  el.addEventListener('touchmove',e=>{ if(e.target.closest('.cam-btns,.hud-top')) return; move(e.touches[0].clientX-tx); tx=e.touches[0].clientX; },{passive:true});
+  el.addEventListener('touchstart',e=>{if(e.target.closest('.cb,.ht'))return;tx=e.touches[0].clientX},{passive:true});
+  el.addEventListener('touchmove',e=>{if(e.target.closest('.cb,.ht'))return;mv(e.touches[0].clientX-tx);tx=e.touches[0].clientX},{passive:true});
+}
+function updA(a){document.getElementById('an').textContent=Math.round(a)+'°';document.getElementById('aDisp').textContent=Math.round(a)+'°/360°';document.getElementById('pf').style.width=Math.min(a/360*100,100)+'%'}
+
+function updDir(cur){
+  if(!S.photos.length)return;
+  const last=S.angles[S.angles.length-1];
+  const diff=((cur-last)+360)%360;const diffB=((last-cur)+360)%360;
+  const fwd=diff<=180;const actual=fwd?diff:diffB;
+  const tgt=S.step,idealMin=tgt*.6,idealMax=tgt*1.2,overMax=tgt*1.8;
+  const dg=document.getElementById('dirG');dg.classList.add('on');
+  const aw=document.getElementById('dirArr'),svg=document.getElementById('dirSvg'),dl=document.getElementById('dirLbl');
+  if(fwd){aw.className='dir-arrow-wrap right';svg.innerHTML='<path d="M5 12h14M12 5l7 7-7 7"/>';}
+  else{aw.className='dir-arrow-wrap left';svg.innerHTML='<path d="M19 12H5M12 19l-7-7 7-7"/>';}
+  const rem=Math.max(0,tgt-actual);
+  dl.textContent=rem>0?Math.round(rem)+'° 더 이동':'✓ 촬영!';
+  // meter
+  const meter=document.getElementById('moveMeter');meter.style.display='block';
+  const fillPct=Math.min((actual/overMax)*100,100);
+  const fill=document.getElementById('mmFill');fill.style.width=fillPct+'%';
+  fill.className=actual<idealMin?'mm-fill':actual<=idealMax?'mm-fill perfect':'mm-fill over';
+  const zone=document.getElementById('mmZone');zone.style.left=(idealMin/overMax*100)+'%';zone.style.width=((idealMax-idealMin)/overMax*100)+'%';
+  document.getElementById('mmCur').style.left=Math.min(fillPct,100)+'%';
+  document.getElementById('moveDeg').textContent=Math.round(actual)+'°';
+  // status
+  const ms=document.getElementById('moveSt');ms.style.display='block';
+  if(actual<idealMin){ms.className='move-st wait';ms.textContent='↻ '+Math.round(rem)+'° 더 회전하세요'}
+  else if(actual<=idealMax){ms.className='move-st good';ms.textContent='✅ 지금 촬영! (적정 위치)'}
+  else{ms.className='move-st far';ms.textContent='⚠️ 너무 멀리 — 이음새 발생 가능'}
+  // overlap strip
+  const ov=document.getElementById('ovStrip'),ovI=document.getElementById('ovImg');
+  if(actual<idealMax){ov.classList.add('on');ov.className='overlap-strip on '+(fwd?'left':'right');ovI.src=S.photos[S.photos.length-1]}else{ov.classList.remove('on')}
+  aw.style.opacity=actual>=idealMin&&actual<=idealMax?'0':'1';
 }
 
-function updateAngle(a) {
-  document.getElementById('angleNum').textContent=Math.round(a)+'°';
-  document.getElementById('progFill').style.width=Math.min(a/360*100,100)+'%';
-}
+function togAuto(){S.auto=!S.auto;document.getElementById('ba').classList.toggle('on',S.auto);document.getElementById('bsh').classList.toggle('ao',S.auto);S.lastAA=Math.floor(S.angle/S.step)*S.step;toast(S.auto?'자동 촬영 ON':'수동 촬영')}
+function chkA(a){const st=Math.floor(a/S.step)*S.step;if(st!==S.lastAA&&st>0){S.lastAA=st;snap()}}
 
-function toggleAuto() {
-  S.autoMode=!S.autoMode;
-  document.getElementById('btnAutoMode').classList.toggle('on',S.autoMode);
-  document.getElementById('btnShutter').classList.toggle('auto-on',S.autoMode);
-  S.lastAutoAngle=Math.floor(S.angle/30)*30;
-  toast(S.autoMode?'자동 촬영 ON — 천천히 회전':'수동 촬영');
-}
-
-function checkAuto(a) {
-  const step=Math.floor(a/30)*30;
-  if(step!==S.lastAutoAngle && step>0) { S.lastAutoAngle=step; takePhoto(); }
-}
-
-function takePhoto() {
-  const video=document.getElementById('camVideo');
-  const canvas=document.getElementById('capCanvas');
+function snap(){
+  const video=document.getElementById('vid'),canvas=document.getElementById('cvs'),isL=S.mode==='landscape';
   let dataURL;
-
-  if(S.isDesktop && !S.stream) {
-    canvas.width=640; canvas.height=480;
-    const ctx=canvas.getContext('2d');
-    // Generate gradient scene with depth simulation
-    const hue=(S.angle/360)*360;
-    // Sky
-    const skyGrad=ctx.createLinearGradient(0,0,0,240);
-    skyGrad.addColorStop(0,`hsl(${(hue+200)%360},40%,20%)`);
-    skyGrad.addColorStop(1,`hsl(${(hue+180)%360},30%,35%)`);
-    ctx.fillStyle=skyGrad; ctx.fillRect(0,0,640,240);
-    // Ground
-    const gndGrad=ctx.createLinearGradient(0,240,0,480);
-    gndGrad.addColorStop(0,`hsl(${(hue+120)%360},25%,25%)`);
-    gndGrad.addColorStop(1,`hsl(${(hue+100)%360},20%,15%)`);
-    ctx.fillStyle=gndGrad; ctx.fillRect(0,240,640,240);
-    // Far mountains
-    ctx.fillStyle=`hsla(${(hue+160)%360},20%,30%,.8)`;
-    ctx.beginPath(); ctx.moveTo(0,260);
-    for(let x=0;x<=640;x+=40) ctx.lineTo(x,220+Math.sin((x+S.angle*5)*.015)*40);
-    ctx.lineTo(640,260); ctx.fill();
-    // Mid buildings
-    for(let i=0;i<6;i++){
-      const bx=((i*110+S.angle*2)%700)-30;
-      const bh=80+Math.sin(i*1.7)*50;
-      ctx.fillStyle=`hsla(${(hue+i*30)%360},30%,22%,.9)`;
-      ctx.fillRect(bx,260-bh,60,bh);
-      // Windows
-      ctx.fillStyle=`hsla(50,80%,60%,.6)`;
-      for(let wy=270-bh;wy<255;wy+=15) for(let wx=bx+8;wx<bx+55;wx+=16) ctx.fillRect(wx,wy,6,8);
-    }
-    // Near objects
-    const nx=((S.angle*4)%640);
-    ctx.fillStyle=`hsla(${hue},40%,35%,.95)`;
-    ctx.fillRect(nx,200,40,260);
-    ctx.fillStyle=`hsla(${(hue+60)%360},50%,30%,1)`;
-    ctx.beginPath(); ctx.arc(nx+20,180,35,0,Math.PI*2); ctx.fill();
-
-    // Angle label
-    ctx.fillStyle='rgba(255,255,255,.7)'; ctx.font='bold 28px JetBrains Mono';
-    ctx.textAlign='center'; ctx.fillText(Math.round(S.angle)+'°',320,460);
-
-    dataURL=canvas.toDataURL('image/jpeg',.85);
-  } else {
-    canvas.width=video.videoWidth||640; canvas.height=video.videoHeight||480;
-    canvas.getContext('2d').drawImage(video,0,0);
-    dataURL=canvas.toDataURL('image/jpeg',.85);
-  }
-
-  S.photos.push(dataURL);
-  S.angles.push(S.angle);
-
-  // Generate pseudo depth map
-  generateDepthMap(dataURL);
-
-  // Flash
-  const fl=document.getElementById('flash');
-  fl.classList.add('on'); setTimeout(()=>fl.classList.remove('on'),120);
-
-  // Update UI
-  document.getElementById('pCount').textContent=S.photos.length;
-  document.getElementById('depthStatus').textContent='분석중';
-  setTimeout(()=>document.getElementById('depthStatus').textContent='✓ '+S.photos.length+'장',600);
-
-  // Thumbnail
-  const strip=document.getElementById('thumbs');
-  const th=document.createElement('div'); th.className='th';
-  th.innerHTML=`<img src="${dataURL}">`;
-  strip.appendChild(th); strip.scrollLeft=strip.scrollWidth;
-
-  if(navigator.vibrate) navigator.vibrate(40);
-  if(S.angle>=340 && S.photos.length>=8) toast('360° 완료! 완료를 누르세요');
+  if(S.isDT&&!S.stream){
+    canvas.width=isL?800:450;canvas.height=isL?450:800;
+    const ctx=canvas.getContext('2d'),W=canvas.width,H=canvas.height,h=(S.angle/360)*360;
+    const sky=ctx.createLinearGradient(0,0,0,H*.5);sky.addColorStop(0,'hsl('+(h+210)%360+',50%,25%)');sky.addColorStop(1,'hsl('+(h+195)%360+',35%,40%)');ctx.fillStyle=sky;ctx.fillRect(0,0,W,H*.5);
+    ctx.fillStyle='rgba(255,255,255,.06)';for(let i=0;i<4;i++){ctx.beginPath();ctx.ellipse(((i*190+h*3)%(W*1.1))-30,H*.12+Math.sin(i*2)*H*.06,80,20,0,0,Math.PI*2);ctx.fill()}
+    ctx.fillStyle='hsla('+(h+160)%360+',20%,28%,.9)';ctx.beginPath();ctx.moveTo(0,H*.55);for(let x=0;x<=W;x+=15)ctx.lineTo(x,H*.45+Math.sin((x+h*6)*.012)*H*.06);ctx.lineTo(W,H*.55);ctx.fill();
+    ctx.fillStyle='hsla('+(h+140)%360+',22%,22%,.95)';ctx.beginPath();ctx.moveTo(0,H*.6);for(let x=0;x<=W;x+=12)ctx.lineTo(x,H*.52+Math.sin((x+h*8)*.01)*H*.05);ctx.lineTo(W,H*.6);ctx.fill();
+    const gnd=ctx.createLinearGradient(0,H*.55,0,H);gnd.addColorStop(0,'hsl('+(h+120)%360+',20%,20%)');gnd.addColorStop(1,'hsl('+(h+110)%360+',15%,12%)');ctx.fillStyle=gnd;ctx.fillRect(0,H*.55,W,H*.45);
+    for(let i=0;i<7;i++){const bx=((i*W/6+h*2.5)%(W*1.1))-30;if(i%3===0){ctx.fillStyle='hsla('+(h+90)%360+',30%,18%,.9)';ctx.fillRect(bx+12,H*.45,6,H*.2);ctx.fillStyle='hsla('+(h+100)%360+',35%,22%,.9)';ctx.beginPath();ctx.arc(bx+15,H*.42,22,0,Math.PI*2);ctx.fill()}else{const bh=H*.1+Math.sin(i*1.3)*H*.07;ctx.fillStyle='hsla('+(h+i*25)%360+',25%,18%,.95)';ctx.fillRect(bx,H*.57-bh,50,bh);ctx.fillStyle='rgba(255,200,50,.5)';for(let wy=H*.58-bh;wy<H*.56;wy+=14)for(let wx=bx+6;wx<bx+46;wx+=12)if(Math.random()>.3)ctx.fillRect(wx,wy,5,7)}}
+    dataURL=canvas.toDataURL('image/jpeg',.9);
+  }else{canvas.width=video.videoWidth||800;canvas.height=video.videoHeight||600;canvas.getContext('2d').drawImage(video,0,0);dataURL=canvas.toDataURL('image/jpeg',.9)}
+  S.photos.push(dataURL);S.angles.push(S.angle);
+  document.getElementById('fl').classList.add('on');setTimeout(()=>document.getElementById('fl').classList.remove('on'),120);
+  document.getElementById('cnt').textContent=S.photos.length;
+  const strip=document.getElementById('ths');strip.querySelectorAll('.ti').forEach(t=>t.classList.remove('cur'));
+  const ti=document.createElement('div');ti.className='ti cur';ti.innerHTML='<img src="'+dataURL+'">';strip.appendChild(ti);strip.scrollLeft=strip.scrollWidth;
+  const ms=document.getElementById('moveSt');ms.style.display='block';ms.className='move-st good';ms.textContent='✓ '+S.photos.length+'번째 완료! 다음으로 이동';
+  setTimeout(()=>{if(S.photos.length>0)updDir(S.angle)},500);
+  if(navigator.vibrate)navigator.vibrate(40);
+  if(S.angle>=340&&S.photos.length>=8)toast('360° 완료! 완료를 누르세요');
 }
+function cancel(){if(S.stream){S.stream.getTracks().forEach(t=>t.stop());S.stream=null}window.removeEventListener('deviceorientation',onO);showS('home')}
+function finish(){if(S.photos.length<3){toast('최소 3장 이상 촬영');return}if(S.stream){S.stream.getTracks().forEach(t=>t.stop());S.stream=null}window.removeEventListener('deviceorientation',onO);showS('process');runStitch()}
 
-function generateDepthMap(imgSrc) {
-  // Pseudo depth estimation using edge detection + luminance
-  const img=new Image();
-  img.onload=()=>{
-    const c=document.createElement('canvas');
-    const w=160, h=120; // small for performance
-    c.width=w; c.height=h;
-    const ctx=c.getContext('2d');
-    ctx.drawImage(img,0,0,w,h);
-    const data=ctx.getImageData(0,0,w,h);
-    const d=data.data;
-    const depth=new Uint8Array(w*h);
-
-    for(let y=1;y<h-1;y++){
-      for(let x=1;x<w-1;x++){
-        const i=(y*w+x)*4;
-        // Luminance
-        const lum=d[i]*.299+d[i+1]*.587+d[i+2]*.114;
-        // Sobel edge (simplified)
-        const il=(y*w+(x-1))*4, ir=(y*w+(x+1))*4;
-        const it=((y-1)*w+x)*4, ib=((y+1)*w+x)*4;
-        const gx=Math.abs((d[ir]*.299+d[ir+1]*.587+d[ir+2]*.114)-(d[il]*.299+d[il+1]*.587+d[il+2]*.114));
-        const gy=Math.abs((d[ib]*.299+d[ib+1]*.587+d[ib+2]*.114)-(d[it]*.299+d[it+1]*.587+d[it+2]*.114));
-        const edge=Math.min(255,gx+gy);
-        // Vertical position heuristic (lower=nearer)
-        const vDepth=(y/h)*0.6;
-        // Combine: high edge+low position = near, smooth+high = far
-        const rawDepth=Math.min(255, (1-vDepth)*200 + edge*0.5 + (255-lum)*0.3);
-        depth[y*w+x]=Math.max(0,Math.min(255,rawDepth));
-      }
-    }
-
-    // Smooth
-    const smoothed=new Uint8Array(w*h);
-    for(let y=2;y<h-2;y++){
-      for(let x=2;x<w-2;x++){
-        let sum=0,cnt=0;
-        for(let dy=-2;dy<=2;dy++) for(let dx=-2;dx<=2;dx++){ sum+=depth[(y+dy)*w+(x+dx)]; cnt++; }
-        smoothed[y*w+x]=sum/cnt;
-      }
-    }
-
-    // Store as colored depth map
-    const outData=ctx.createImageData(w,h);
-    for(let i=0;i<w*h;i++){
-      const v=smoothed[i];
-      // Near=magenta, mid=cyan, far=green
-      if(v>170){ outData.data[i*4]=255; outData.data[i*4+1]=45; outData.data[i*4+2]=120; }
-      else if(v>85){ outData.data[i*4]=0; outData.data[i*4+1]=240; outData.data[i*4+2]=255; }
-      else { outData.data[i*4]=163; outData.data[i*4+1]=230; outData.data[i*4+2]=53; }
-      outData.data[i*4+3]=255;
-    }
-    ctx.putImageData(outData,0,0);
-    S.depthMaps.push(c.toDataURL('image/png'));
-  };
-  img.src=imgSrc;
+async function runStitch(){
+  const pct=document.getElementById('pp'),title=document.getElementById('pt2'),step=document.getElementById('ps2'),sCvs=document.getElementById('sCvs'),sLine=document.getElementById('sLine');
+  const sorted=S.photos.map((p,i)=>({src:p,angle:S.angles[i]})).sort((a,b)=>a.angle-b.angle);
+  title.textContent='로딩...';const images=[];
+  for(let i=0;i<sorted.length;i++){images.push({img:await loadImg(sorted[i].src),angle:sorted[i].angle});pct.textContent=Math.round((i/sorted.length)*15)+'%'}
+  const iW=images[0].img.width,iH=images[0].img.height;
+  const panoW=Math.max(4096,iW*images.length/2),panoH=Math.round(panoW/(S.mode==='landscape'?2:1.2));
+  const pC=document.createElement('canvas');pC.width=panoW;pC.height=panoH;const pCtx=pC.getContext('2d');
+  sCvs.width=panoW;sCvs.height=panoH;const sCtx=sCvs.getContext('2d');
+  title.textContent='합성 중...';const oF=.3;
+  for(let i=0;i<images.length;i++){
+    await new Promise(r=>setTimeout(r,80));const{img,angle}=images[i];const nA=angle/360;const wP=panoW/images.length*(1+oF);
+    drawB(pCtx,img,nA*panoW-wP/2,0,wP,panoH,oF);sCtx.drawImage(pC,0,0,sCvs.width,sCvs.height);sLine.style.left=((i+1)/images.length*100)+'%';
+    pct.textContent=(20+Math.round((i/images.length)*45))+'%';step.textContent='이미지 '+(i+1)+'/'+images.length}
+  title.textContent='간격 보정...';pct.textContent='70%';await delay(200);fillG(pCtx,panoW,panoH);
+  title.textContent='색상 보정...';pct.textContent='82%';await delay(200);eqC(pCtx,panoW,panoH);
+  title.textContent='루프 연결...';pct.textContent='92%';await delay(200);blendE(pCtx,panoW,panoH);
+  sCtx.drawImage(pC,0,0,sCvs.width,sCvs.height);pct.textContent='100%';title.textContent='완료!';await delay(500);
+  S.panoCvs=pC;initV(pC);
 }
-
-function cancelCapture() {
-  if(S.stream){ S.stream.getTracks().forEach(t=>t.stop()); S.stream=null; }
-  window.removeEventListener('deviceorientation',onOrient);
-  showScreen('homeScreen');
+function delay(ms){return new Promise(r=>setTimeout(r,ms))}
+function drawB(ctx,img,x,y,w,h,oF){
+  const tmp=document.createElement('canvas');tmp.width=ctx.canvas.width;tmp.height=ctx.canvas.height;const tc=tmp.getContext('2d');
+  tc.drawImage(img,x,y,w,h);const fW=w*oF*.5;const d=tc.getImageData(0,0,tmp.width,tmp.height);const p=d.data;
+  const le=Math.max(0,Math.round(x)),re=Math.min(tmp.width,Math.round(x+w));
+  for(let py=0;py<tmp.height;py++)for(let px=le;px<re;px++){const i=(py*tmp.width+px)*4;if(p[i+3]===0)continue;const dL=px-le,dR=re-px;let a=1;if(dL<fW)a=Math.min(a,dL/fW);if(dR<fW)a=Math.min(a,dR/fW);a=a*a*(3-2*a);p[i+3]=Math.round(a*255)}
+  tc.putImageData(d,0,0);ctx.drawImage(tmp,0,0);
 }
+function fillG(ctx,w,h){const d=ctx.getImageData(0,0,w,h);const p=d.data;for(let x=0;x<w;x++){let em=true;for(let y=~~(h*.3);y<~~(h*.7);y++){const i=(y*w+x)*4;if(p[i]>5||p[i+1]>5||p[i+2]>5){em=false;break}}if(!em)continue;let l=x-1,r=x+1;while(l>=0){let ok=false;for(let y=~~(h*.4);y<~~(h*.6);y++){const i=(y*w+l)*4;if(p[i]>5||p[i+1]>5||p[i+2]>5){ok=true;break}}if(ok)break;l--}while(r<w){let ok=false;for(let y=~~(h*.4);y<~~(h*.6);y++){const i=(y*w+r)*4;if(p[i]>5||p[i+1]>5||p[i+2]>5){ok=true;break}}if(ok)break;r++}if(l>=0&&r<w){const t=(x-l)/(r-l);for(let y=0;y<h;y++){const il=(y*w+l)*4,ir=(y*w+r)*4,ic=(y*w+x)*4;p[ic]=~~(p[il]*(1-t)+p[ir]*t);p[ic+1]=~~(p[il+1]*(1-t)+p[ir+1]*t);p[ic+2]=~~(p[il+2]*(1-t)+p[ir+2]*t);p[ic+3]=255}}}ctx.putImageData(d,0,0)}
+function eqC(ctx,w,h){const d=ctx.getImageData(0,0,w,h);const p=d.data;const sW=~~(w/20);const av=[];for(let sx=0;sx<w;sx+=sW){let s=0,c=0;for(let x=sx;x<Math.min(sx+sW,w);x++)for(let y=~~(h*.3);y<~~(h*.7);y++){const i=(y*w+x)*4;s+=p[i]*.299+p[i+1]*.587+p[i+2]*.114;c++}av.push(c>0?s/c:128)}const gA=av.reduce((a,b)=>a+b,0)/av.length;for(let sx=0;sx<w;sx+=sW){const si=~~(sx/sW);if(si>=av.length)continue;const c=Math.max(.7,Math.min(1.3,gA/(av[si]||128)));for(let x=sx;x<Math.min(sx+sW,w);x++)for(let y=0;y<h;y++){const i=(y*w+x)*4;p[i]=Math.min(255,~~(p[i]*c));p[i+1]=Math.min(255,~~(p[i+1]*c));p[i+2]=Math.min(255,~~(p[i+2]*c))}}ctx.putImageData(d,0,0)}
+function blendE(ctx,w,h){const bW=~~(w*.05);const d=ctx.getImageData(0,0,w,h);const p=d.data;for(let y=0;y<h;y++)for(let bx=0;bx<bW;bx++){const t=bx/bW;const s=t*t*(3-2*t);const li=(y*w+bx)*4,ri=(y*w+(w-bW+bx))*4;const bR=~~(p[ri]*(1-s)+p[li]*s),bG=~~(p[ri+1]*(1-s)+p[li+1]*s),bB=~~(p[ri+2]*(1-s)+p[li+2]*s);p[li]=bR;p[li+1]=bG;p[li+2]=bB;p[li+3]=255;p[ri]=bR;p[ri+1]=bG;p[ri+2]=bB;p[ri+3]=255}ctx.putImageData(d,0,0)}
+function loadImg(src){return new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.src=src})}
 
-function finishCapture() {
-  if(S.photos.length<2){ toast('최소 2장 촬영 필요'); return; }
-  if(S.stream){ S.stream.getTracks().forEach(t=>t.stop()); S.stream=null; }
-  window.removeEventListener('deviceorientation',onOrient);
-  showScreen('processScreen');
-  runProcessing();
+function initV(pC){
+  showS('viewer');const c=document.getElementById('v3d');c.innerHTML='';
+  document.getElementById('vmeta').textContent=S.photos.length+' photos · '+(S.mode==='landscape'?'가로':'세로')+' · seamless';
+  S.scene=new THREE.Scene();S.cam=new THREE.PerspectiveCamera(75,c.clientWidth/c.clientHeight,.1,1100);
+  S.ren=new THREE.WebGLRenderer({antialias:true});S.ren.setSize(c.clientWidth,c.clientHeight);S.ren.setPixelRatio(Math.min(window.devicePixelRatio,2));c.appendChild(S.ren.domElement);
+  const tex=new THREE.CanvasTexture(pC);tex.minFilter=THREE.LinearFilter;tex.magFilter=THREE.LinearFilter;tex.wrapS=THREE.RepeatWrapping;
+  const geo=new THREE.SphereGeometry(500,64,32);geo.scale(-1,1,1);
+  S.sphere=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({map:tex}));S.scene.add(S.sphere);
+  S.lon=180;S.lat=0;S.ar=false;
+  const el=S.ren.domElement;
+  el.addEventListener('mousedown',e=>{S.drag=true;S.prev={x:e.clientX,y:e.clientY};if(S.ar)togAR()});
+  el.addEventListener('mousemove',e=>{if(!S.drag)return;S.lon-=(e.clientX-S.prev.x)*.2;S.lat+=(e.clientY-S.prev.y)*.2;S.lat=Math.max(-85,Math.min(85,S.lat));S.prev={x:e.clientX,y:e.clientY}});
+  el.addEventListener('mouseup',()=>S.drag=false);el.addEventListener('mouseleave',()=>S.drag=false);
+  let tx,ty;el.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;ty=e.touches[0].clientY;if(S.ar)togAR()},{passive:true});
+  el.addEventListener('touchmove',e=>{S.lon-=(e.touches[0].clientX-tx)*.2;S.lat+=(e.touches[0].clientY-ty)*.2;S.lat=Math.max(-85,Math.min(85,S.lat));tx=e.touches[0].clientX;ty=e.touches[0].clientY},{passive:true});
+  let lp=0;el.addEventListener('touchstart',e=>{if(e.touches.length===2)lp=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY)},{passive:true});
+  el.addEventListener('touchmove',e=>{if(e.touches.length===2){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);S.cam.fov=Math.max(30,Math.min(100,S.cam.fov+(lp-d)*.1));S.cam.updateProjectionMatrix();showFOV();lp=d}},{passive:true});
+  el.addEventListener('wheel',e=>{S.cam.fov=Math.max(30,Math.min(100,S.cam.fov+e.deltaY*.05));S.cam.updateProjectionMatrix();showFOV()},{passive:true});
+  window.addEventListener('resize',()=>{if(!S.cam||!S.ren)return;S.cam.aspect=c.clientWidth/c.clientHeight;S.cam.updateProjectionMatrix();S.ren.setSize(c.clientWidth,c.clientHeight)});
+  animV();setTimeout(()=>togAR(),300);
 }
-
-// ======================== PROCESSING ========================
-async function runProcessing() {
-  const pct=document.getElementById('procPct');
-  const title=document.getElementById('procTitle');
-  const step=document.getElementById('procStep');
-  const da=document.getElementById('depthAnalysis');
-
-  const steps=[
-    {p:10,t:'이미지 분석 중...',s:'원본 이미지 전처리'},
-    {p:25,t:'깊이 추정 중...',s:'MiDaS DPT-Large 모델 실행'},
-    {p:40,t:'깊이 맵 생성 중...',s:'픽셀별 깊이값 계산'},
-    {p:55,t:'레이어 분리 중...',s:'근경/중경/원경 마스크 생성'},
-    {p:70,t:'3D 매핑 중...',s:'구면 좌표계 변환 + UV 매핑'},
-    {p:85,t:'파노라마 합성 중...',s:'블렌딩 + 시차 보정'},
-    {p:95,t:'최종 렌더링 중...',s:'Three.js 텍스처 최적화'},
-    {p:100,t:'완료!',s:'3D 파노라마 준비 완료'},
-  ];
-
-  for(const s of steps) {
-    await new Promise(r=>setTimeout(r,350+Math.random()*250));
-    pct.textContent=s.p+'%'; title.textContent=s.t; step.textContent=s.s;
-
-    if(s.p===55) {
-      da.style.opacity='1';
-      document.getElementById('daLayers').textContent='4 레이어';
-    }
-    if(s.p===70) {
-      document.getElementById('daRange').textContent='5 ~ 50m';
-      document.getElementById('daQuality').textContent='우수 (A)';
-      document.getElementById('daQuality').className='da-val good';
-    }
-    if(s.p===85) {
-      document.getElementById('daMaxDist').textContent='~120m';
-      document.getElementById('daRes').textContent=S.photos.length*640+'×480px';
-    }
-  }
-
-  await new Promise(r=>setTimeout(r,600));
-  init3DViewer();
-}
-
-// ======================== 3D VIEWER ========================
-function init3DViewer() {
-  showScreen('viewerScreen');
-  document.getElementById('vMeta').textContent=`${S.photos.length} photos · 4 depth layers`;
-
-  const container=document.getElementById('viewer3D');
-  container.innerHTML='';
-
-  // Sort photos by angle
-  const sorted=S.photos.map((p,i)=>({photo:p,angle:S.angles[i],depth:S.depthMaps[i]}))
-    .sort((a,b)=>a.angle-b.angle);
-
-  // Create combined panorama texture
-  const panoCanvas=document.createElement('canvas');
-  const depthCanvas=document.createElement('canvas');
-  const imgW=640, imgH=480;
-  panoCanvas.width=imgW*sorted.length;
-  panoCanvas.height=imgH;
-  depthCanvas.width=imgW*sorted.length;
-  depthCanvas.height=imgH;
-
-  let loaded=0;
-  sorted.forEach((item,idx)=>{
-    const img=new Image();
-    img.onload=()=>{
-      panoCanvas.getContext('2d').drawImage(img,idx*imgW,0,imgW,imgH);
-      loaded++;
-      if(loaded===sorted.length*2) buildScene();
-    };
-    img.src=item.photo;
-
-    const dImg=new Image();
-    dImg.onload=()=>{
-      depthCanvas.getContext('2d').drawImage(dImg,idx*imgW,0,imgW,imgH);
-      loaded++;
-      if(loaded===sorted.length*2) buildScene();
-    };
-    dImg.src=item.depth||item.photo;
-  });
-
-  function buildScene() {
-    // THREE.js setup
-    S.scene=new THREE.Scene();
-    S.camera=new THREE.PerspectiveCamera(75,container.clientWidth/container.clientHeight,.1,1100);
-    S.renderer=new THREE.WebGLRenderer({antialias:true});
-    S.renderer.setSize(container.clientWidth,container.clientHeight);
-    S.renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
-    container.appendChild(S.renderer.domElement);
-
-    // Main panorama sphere
-    const panoTex=new THREE.CanvasTexture(panoCanvas);
-    panoTex.wrapS=THREE.RepeatWrapping;
-    const geo=new THREE.SphereGeometry(500,60,40);
-    geo.scale(-1,1,1); // inside-out
-
-    // All layers sphere
-    const allMat=new THREE.MeshBasicMaterial({map:panoTex});
-    S.spheres.all=new THREE.Mesh(geo,allMat);
-    S.scene.add(S.spheres.all);
-
-    // Depth map sphere
-    const depthTex=new THREE.CanvasTexture(depthCanvas);
-    depthTex.wrapS=THREE.RepeatWrapping;
-    const depthMat=new THREE.MeshBasicMaterial({map:depthTex,transparent:true,opacity:0});
-    S.spheres.depth=new THREE.Mesh(geo.clone(),depthMat);
-    S.scene.add(S.spheres.depth);
-
-    // Create depth-separated layer textures
-    createLayerTextures(panoCanvas, depthCanvas, sorted.length);
-
-    // Show depth map mini
-    const dmCanvas=document.getElementById('depthMapCanvas');
-    dmCanvas.width=160; dmCanvas.height=120;
-    dmCanvas.getContext('2d').drawImage(depthCanvas,0,0,160,120);
-
-    // Interaction
-    S.lon=180; S.lat=0;
-    setupInteraction(container);
-
-    // Start render loop
-    animate();
-
-    // Auto rotate
-    setTimeout(()=>toggleAutoRot(),300);
-  }
-
-  function createLayerTextures(panoCvs, depthCvs, count) {
-    const w=panoCvs.width, h=panoCvs.height;
-    const pCtx=panoCvs.getContext('2d');
-    const dCtx=depthCvs.getContext('2d');
-    const pData=pCtx.getImageData(0,0,w,h);
-    const dData=dCtx.getImageData(0,0,w,h);
-
-    // Create canvases for near/mid/far
-    const layers={near:document.createElement('canvas'), mid:document.createElement('canvas'), far:document.createElement('canvas')};
-    Object.values(layers).forEach(c=>{c.width=w;c.height=h;});
-    const ctxs={near:layers.near.getContext('2d'), mid:layers.mid.getContext('2d'), far:layers.far.getContext('2d')};
-
-    // Distribute pixels based on depth map color
-    for(const key of ['near','mid','far']){
-      const imgData=ctxs[key].createImageData(w,h);
-      for(let i=0;i<w*h;i++){
-        const r=dData.data[i*4], g=dData.data[i*4+1], b=dData.data[i*4+2];
-        let show=false;
-        if(key==='near' && r>200 && g<100) show=true; // magenta=near
-        if(key==='mid' && g>200 && b>200 && r<50) show=true; // cyan=mid
-        if(key==='far' && g>180 && r>100 && b<100) show=true; // lime=far
-        if(show){
-          imgData.data[i*4]=pData.data[i*4];
-          imgData.data[i*4+1]=pData.data[i*4+1];
-          imgData.data[i*4+2]=pData.data[i*4+2];
-          imgData.data[i*4+3]=255;
-        } else {
-          imgData.data[i*4+3]=0;
-        }
-      }
-      ctxs[key].putImageData(imgData,0,0);
-    }
-
-    const geo=new THREE.SphereGeometry(500,60,40);
-    geo.scale(-1,1,1);
-
-    // Near layer (slightly smaller sphere = closer)
-    const nearTex=new THREE.CanvasTexture(layers.near);
-    nearTex.wrapS=THREE.RepeatWrapping;
-    S.spheres.near=new THREE.Mesh(
-      new THREE.SphereGeometry(480,60,40).scale(-1,1,1)||geo.clone(),
-      new THREE.MeshBasicMaterial({map:nearTex,transparent:true,opacity:0})
-    );
-    // Fix: create proper scaled geos
-    const nearGeo=new THREE.SphereGeometry(480,60,40); nearGeo.scale(-1,1,1);
-    const midGeo=new THREE.SphereGeometry(495,60,40); midGeo.scale(-1,1,1);
-    const farGeo=new THREE.SphereGeometry(510,60,40); farGeo.scale(-1,1,1);
-
-    S.spheres.near=new THREE.Mesh(nearGeo,new THREE.MeshBasicMaterial({map:nearTex,transparent:true,opacity:0}));
-    const midTex=new THREE.CanvasTexture(layers.mid); midTex.wrapS=THREE.RepeatWrapping;
-    S.spheres.mid=new THREE.Mesh(midGeo,new THREE.MeshBasicMaterial({map:midTex,transparent:true,opacity:0}));
-    const farTex=new THREE.CanvasTexture(layers.far); farTex.wrapS=THREE.RepeatWrapping;
-    S.spheres.far=new THREE.Mesh(farGeo,new THREE.MeshBasicMaterial({map:farTex,transparent:true,opacity:0}));
-
-    S.scene.add(S.spheres.near);
-    S.scene.add(S.spheres.mid);
-    S.scene.add(S.spheres.far);
-  }
-}
-
-function setupInteraction(container) {
-  // Mouse/touch drag
-  container.addEventListener('mousedown',e=>{
-    S.isDrag=true; S.prevMouse={x:e.clientX,y:e.clientY};
-    if(S.isAutoRot) toggleAutoRot();
-  });
-  container.addEventListener('mousemove',e=>{
-    if(!S.isDrag) return;
-    S.lon-=(e.clientX-S.prevMouse.x)*.15;
-    S.lat+=(e.clientY-S.prevMouse.y)*.15;
-    S.lat=Math.max(-85,Math.min(85,S.lat));
-    S.prevMouse={x:e.clientX,y:e.clientY};
-  });
-  container.addEventListener('mouseup',()=>S.isDrag=false);
-  container.addEventListener('mouseleave',()=>S.isDrag=false);
-
-  let tx,ty;
-  container.addEventListener('touchstart',e=>{
-    tx=e.touches[0].clientX; ty=e.touches[0].clientY;
-    if(S.isAutoRot) toggleAutoRot();
-  },{passive:true});
-  container.addEventListener('touchmove',e=>{
-    S.lon-=(e.touches[0].clientX-tx)*.15;
-    S.lat+=(e.touches[0].clientY-ty)*.15;
-    S.lat=Math.max(-85,Math.min(85,S.lat));
-    tx=e.touches[0].clientX; ty=e.touches[0].clientY;
-  },{passive:true});
-
-  // FOV zoom
-  container.addEventListener('wheel',e=>{
-    S.camera.fov=Math.max(30,Math.min(100,S.camera.fov+e.deltaY*.05));
-    S.camera.updateProjectionMatrix();
-  },{passive:true});
-
-  // Resize
-  window.addEventListener('resize',()=>{
-    if(!S.camera||!S.renderer) return;
-    S.camera.aspect=container.clientWidth/container.clientHeight;
-    S.camera.updateProjectionMatrix();
-    S.renderer.setSize(container.clientWidth,container.clientHeight);
-  });
-}
-
-function animate() {
-  if(!document.getElementById('viewerScreen').classList.contains('active')) return;
-  requestAnimationFrame(animate);
-
-  if(S.isAutoRot) S.lon+=.12;
-
-  S.phi=THREE.MathUtils.degToRad(90-S.lat);
-  S.theta=THREE.MathUtils.degToRad(S.lon);
-
-  const target=new THREE.Vector3(
-    500*Math.sin(S.phi)*Math.cos(S.theta),
-    500*Math.cos(S.phi),
-    500*Math.sin(S.phi)*Math.sin(S.theta)
-  );
-  S.camera.lookAt(target);
-
-  // Update angle display
-  const viewAngle=((S.lon%360)+360)%360;
-  document.getElementById('vAngle').textContent=Math.round(viewAngle)+'°';
-  document.getElementById('vThumb').style.left=(viewAngle/360*100)+'%';
-
-  S.renderer.render(S.scene,S.camera);
-}
-
-function toggleLayer(btn) {
-  document.querySelectorAll('.layer-btn').forEach(b=>b.classList.remove('on'));
-  btn.classList.add('on');
-  const layer=btn.dataset.layer;
-
-  // Reset all
-  Object.entries(S.spheres).forEach(([k,mesh])=>{
-    if(!mesh) return;
-    if(k==='all') mesh.material.opacity=layer==='all'?1:0;
-    else if(k==='depth') mesh.material.opacity=layer==='depth'?1:0;
-    else if(k===layer) mesh.material.opacity=1;
-    else mesh.material.opacity=layer==='all'?0:0;
-
-    mesh.material.transparent=true;
-    mesh.visible=mesh.material.opacity>0;
-  });
-}
-
-function toggleAutoRot() {
-  S.isAutoRot=!S.isAutoRot;
-  document.getElementById('btnAutoRot').textContent=S.isAutoRot?'⏸ 정지':'↻ 자동회전';
-}
-
-function toggleDepthMap() {
-  document.getElementById('depthMapOvl').classList.toggle('show');
-}
-
-function goHome() {
-  S.isAutoRot=false;
-  if(S.renderer){ S.renderer.dispose(); }
-  showScreen('homeScreen');
-}
+function showFOV(){const f=document.getElementById('fovD');f.textContent='FOV '+Math.round(S.cam.fov)+'°';f.classList.add('on');clearTimeout(f._t);f._t=setTimeout(()=>f.classList.remove('on'),1500)}
+function animV(){if(!document.getElementById('viewer').classList.contains('active'))return;requestAnimationFrame(animV);if(S.ar)S.lon+=.08;const phi=THREE.MathUtils.degToRad(90-S.lat),theta=THREE.MathUtils.degToRad(S.lon);S.cam.lookAt(new THREE.Vector3(500*Math.sin(phi)*Math.cos(theta),500*Math.cos(phi),500*Math.sin(phi)*Math.sin(theta)));const va=((S.lon%360)+360)%360;document.getElementById('vang').textContent=Math.round(va)+'°';document.getElementById('vthumb').style.left=(va/360*100)+'%';S.ren.render(S.scene,S.cam)}
+function togAR(){S.ar=!S.ar;document.getElementById('arBtn').textContent=S.ar?'⏸ 정지':'↻ 자동회전'}
+function saveImg(){if(!S.panoCvs)return;const l=document.createElement('a');l.download='panorama_360.jpg';l.href=S.panoCvs.toDataURL('image/jpeg',.95);l.click();toast('저장 완료!')}
+function goHome(){S.ar=false;if(S.ren)S.ren.dispose();showS('home')}
 </script>
+
 </body>
 </html>
